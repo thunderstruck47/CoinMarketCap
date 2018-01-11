@@ -1,0 +1,6 @@
+Revision history for Perl extension CoinMarketCap.
+
+0.01  Thu Jan 11 23:36:07 2018
+	- original version; created by h2xs 1.23 with options
+		-AX -n CoinMarketCap
+
