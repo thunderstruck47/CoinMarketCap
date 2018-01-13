@@ -69,8 +69,12 @@ sub ticker
             $query += "$param=$$params{$param}";
         }
     }
-    
-    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v1/global/$query");
+   
+
+    # debug
+    print STDERR "REQ: https://api.coinmarketcap.com/v1/ticker/$query\n";
+
+    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v1/ticker/$query");
     
     if ($response->is_success)
     {
@@ -87,7 +91,11 @@ sub global
     my $self = shift;
     my ($params) = @_;
 
-    my $query = defined $$params{convert} ? '' : "?convert=$$params{convert}";
+    my $query = defined $$params{convert} ? "?convert=$$params{convert}" : '';
+    
+    # debug
+    print STDERR "REQ: https://api.coinmarketcap.com/v1/global/$query\n";
+    
     my $response = $$self{ua}->get("https://api.coinmarketcap.com/v1/global/$query");
 
     if ($response->is_success)
