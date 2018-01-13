@@ -1,8 +1,11 @@
 package CoinMarketCap;
 
-use 5.026001;
 use strict;
 use warnings;
+
+use LWP::UserAgent ();
+use LWP::Protocol::https;
+use JSON;
 
 require Exporter;
 
@@ -16,19 +19,86 @@ our @ISA = qw(Exporter);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = ( 'all' => [ qw(
-	
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = qw(
-	
 );
 
 our $VERSION = '0.01';
 
+sub new
+{
+    my $class = shift;
+    
+    $class //= 'CoinMarketCap';
 
-# Preloaded methods go here.
+    my $self = {};
+    bless $self, $class;
+
+    $self->_initialize();
+    
+    return $self;
+}
+
+sub _initialize
+{
+    my $self = shift;
+
+    $$self{ua} = LWP::UserAgent->new;
+    $$self{ua}->agent("CoinMarketCap - Perl Wrapper / $VERSION");
+    $$self{ua}->timeout(10);
+    $$self{ua}->env_proxy;
+
+    return;
+}
+
+sub ticker 
+{
+    my $self = shift;
+    my ($params) = @_;
+
+    my $query = '';
+
+    foreach my $param (('start', 'limit', 'convert'))
+    {
+        if (defined $$params{$param})
+        {
+            $query += ((length $query) == 0) ? '?' : '%';
+            $query += "$param=$$params{$param}";
+        }
+    }
+    
+    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v1/global/$query");
+    
+    if ($response->is_success)
+    {
+        return decode_json($response->decoded_content);
+    }
+    else
+    {
+        die $response->status_line;
+    }
+}
+
+sub global 
+{
+    my $self = shift;
+    my ($params) = @_;
+
+    my $query = defined $$params{convert} ? '' : "?convert=$$params{convert}";
+    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v1/global/$query");
+
+    if ($response->is_success)
+    {
+        return decode_json($response->decoded_content);
+    }
+    else
+    {
+        die $response->status_line;
+    }
+}
 
 1;
 __END__
@@ -36,12 +106,14 @@ __END__
 
 =head1 NAME
 
-CoinMarketCap - Perl extension for blah blah blah
+CoinMarketCap's API wrapped for Perl
 
 =head1 SYNOPSIS
 
-  use CoinMarketCap;
-  blah blah blah
+  use CoinMarketCap qw(ticker global);
+
+  # Get ticker data for currency with id: etherium
+  my $result = ticker "etherium";
 
 =head1 DESCRIPTION
 
