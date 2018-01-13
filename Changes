@@ -4,3 +4,5 @@ Revision history for Perl extension CoinMarketCap.
 	- original version; created by h2xs 1.23 with options
 		-AX -n CoinMarketCap
 
+0.01  Sat Jan 13 12:42:01 2018
+    - initial version; CoinMarketCap object constructo; ticker and global methods
