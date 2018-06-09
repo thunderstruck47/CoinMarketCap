@@ -8,6 +8,6 @@ use Data::Dumper;
 
 my $market = new CoinMarketCap;
 
-print Dumper $market->ticker;
+print Dumper $market->ticker({id=>1});
 print Dumper $market->global({convert => 'EUR'});
 

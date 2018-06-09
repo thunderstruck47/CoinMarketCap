@@ -3,6 +3,9 @@ package CoinMarketCap;
 use strict;
 use warnings;
 
+use Carp;
+use Try::Tiny;
+
 use LWP::UserAgent ();
 use LWP::Protocol::https;
 use JSON;
@@ -15,7 +18,7 @@ our @ISA = qw(Exporter);
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 
-# This allows declaration	use CoinMarketCap ':all';
+# This allows declaration   use CoinMarketCap ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = ( 'all' => [ qw(
@@ -26,16 +29,21 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw(
 );
 
-our $VERSION = '0.01';
+our $VERSION = '0.0.1';
 
 sub new
 {
     my $class = shift;
-    
-    $class //= 'CoinMarketCap';
+    my $api_version = shift // '1'; # TODO: Use hash paramenters instead
 
-    my $self = {};
-    bless $self, $class;
+    if ($api_version ne '1')
+    {
+        croak ("Unknown API version '$api_version'! Supported versions: '1'.");
+    }
+    
+    my $self = bless {
+        api_version => $api_version
+    }, $class;
 
     $self->_initialize();
     
@@ -54,27 +62,27 @@ sub _initialize
     return;
 }
 
-sub ticker 
+sub ticker
 {
     my $self = shift;
     my ($params) = @_;
 
-    my $query = '';
+    my $query = (defined $$params{id}) ? "$$params{id}/": '';
 
     foreach my $param (('start', 'limit', 'convert'))
     {
         if (defined $$params{$param})
         {
-            $query += ((length $query) == 0) ? '?' : '%';
-            $query += "$param=$$params{$param}";
+            $query .= ($query =~ m/^.*\/\?|\?/) ? '%' : '?';
+            $query .= "$param=$$params{$param}";
         }
     }
    
 
     # debug
-    print STDERR "REQ: https://api.coinmarketcap.com/v1/ticker/$query\n";
+    print STDERR "REQ: https://api.coinmarketcap.com/v$$self{api_version}/ticker/$query\n" if $$self{debug};
 
-    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v1/ticker/$query");
+    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v$$self{api_version}/ticker/$query");
     
     if ($response->is_success)
     {
@@ -82,11 +90,18 @@ sub ticker
     }
     else
     {
-        die $response->status_line;
+        try
+        {
+            return decode_json($response->decoded_content);
+        }
+        catch
+        {
+            croak $response->status_line;
+        }   
     }
 }
 
-sub global 
+sub global
 {
     my $self = shift;
     my ($params) = @_;
@@ -94,9 +109,9 @@ sub global
     my $query = defined $$params{convert} ? "?convert=$$params{convert}" : '';
     
     # debug
-    print STDERR "REQ: https://api.coinmarketcap.com/v1/global/$query\n";
+    print STDERR "REQ: https://api.coinmarketcap.com/v$$self{api_version}/global/$query\n" if $$self{debug};
     
-    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v1/global/$query");
+    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v$$self{api_version}/global/$query");
 
     if ($response->is_success)
     {
@@ -118,10 +133,21 @@ CoinMarketCap's API wrapped for Perl
 
 =head1 SYNOPSIS
 
-  use CoinMarketCap qw(ticker global);
+  use CoinMarketCap;
 
-  # Get ticker data for currency with id: etherium
-  my $result = ticker "etherium";
+  my $market = new CoinMarketCap;
+
+  my $ticker_data = $market->ticker;
+  my $global_data = $market->global;
+
+  # Options are passed in as a hash ref
+  my $ethereum_data = $market->ticker({
+    id => 'ethereum',
+    convert => 'EUR'
+  }); 
+  my $ticker_data_top_10 = $market->ticker({
+    limit => '10'
+  });
 
 =head1 DESCRIPTION
 
