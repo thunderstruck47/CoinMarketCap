@@ -14,20 +14,15 @@ make install
 ## USAGE
 
 ```
-use CoinMarketCap;
+use CoinMarketCap::API;
 
-my $market = new CoinMarketCap;
-my $ticker_data = $market->ticker;
-my $global_data = $market->global;
+my $api = new CoinMarketCap::API;
 
-# Options are passed in as a hash ref
-my $ethereum_data = $market->ticker({
-	id => 'ethereum',
-	convert => 'EUR'
-});
-my $ticker_data_top_10 = $market->ticker({
-	limit => '10'
-});
+my $ticker_data = $api->ticker;
+my $global_data = $api->global;
+
+my $ethereum_data = $api->ticker('etherium', convert => 'EUR'); 
+my $ticker_data_top_10 = $api->global(limit => '10');
 ```
 
 ## DEPENDENCIES

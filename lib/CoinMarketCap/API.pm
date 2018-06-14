@@ -1,4 +1,4 @@
-package CoinMarketCap;
+package CoinMarketCap::API;
 
 use strict;
 use warnings;
@@ -18,7 +18,7 @@ our @ISA = qw(Exporter);
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 
-# This allows declaration   use CoinMarketCap ':all';
+# This allows declaration   use CoinMarketCap::API ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = ( 'all' => [ qw(
@@ -29,21 +29,28 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw(
 );
 
-our $VERSION = '0.0.1';
+our $VERSION = '1.0.0a';
 
 sub new
 {
     my $class = shift;
     my $api_version = shift // '1'; # TODO: Use hash paramenters instead
-
-    if ($api_version ne '1')
-    {
-        croak ("Unknown API version '$api_version'! Supported versions: '1'.");
-    }
     
-    my $self = bless {
-        api_version => $api_version
-    }, $class;
+    my $self = bless {}, $class;
+    if ($api_version eq '1')
+    {
+        $$self{api_url} = 'https://api.coinmarketcap.com/v1/';
+    }
+    #elsif ($api_version eq '2')
+    #{
+    #    $$self{api_url} = 'https://api.coinmarketcap.com/v2/';
+    #}
+    #else
+    #{
+    #    croak ("Unknown API version '$api_version'! Supported versions: '1'.");
+    #}
+
+    $$self{debug} = 1;
 
     $self->_initialize();
     
@@ -55,7 +62,7 @@ sub _initialize
     my $self = shift;
 
     $$self{ua} = LWP::UserAgent->new;
-    $$self{ua}->agent("CoinMarketCap - Perl Wrapper / $VERSION");
+    $$self{ua}->agent("CoinMarketCap::API - Perl Wrapper / $VERSION");
     $$self{ua}->timeout(10);
     $$self{ua}->env_proxy;
 
@@ -65,34 +72,43 @@ sub _initialize
 sub ticker
 {
     my $self = shift;
-    my ($params) = @_;
+    my $id = ((scalar @_ % 2 == 0) && (ref $_[0] eq '')) ? undef : shift @_;
+    my (%params) = @_;
 
-    my $query = (defined $$params{id}) ? "$$params{id}/": '';
+    my $method = (defined $id) ? "ticker/$id" : 'ticker';
 
-    foreach my $param (('start', 'limit', 'convert'))
-    {
-        if (defined $$params{$param})
-        {
-            $query .= ($query =~ m/^.*\/\?|\?/) ? '%' : '?';
-            $query .= "$param=$$params{$param}";
-        }
-    }
-   
+    return $self->_get($method, %params);
+}
 
-    # debug
-    print STDERR "REQ: https://api.coinmarketcap.com/v$$self{api_version}/ticker/$query\n" if $$self{debug};
+sub global
+{
+    my ($self, %params) = @_;
 
-    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v$$self{api_version}/ticker/$query");
+    return $self->_get('global', %params);
+}
+
+sub _get
+{
+    my ($self, $method, %params) = @_;
+
+    # TODO: check self or user agent
+    unless (ref $method eq '') { $self->_trace("ERR: Expecting method as a string!") };
+    unless (ref \%params eq 'HASH') { $self->_trace("ERR: Expecting parameters as key value pairs!") };
+
+    my $query = keys %params ? ('?' . join('%', (map { "$_=$params{$_}" } keys %params))) : '';
+    my $request_url = $$self{api_url} . $method . $query;
+    $self->_trace("REQ: $request_url");
     
+    my $response = $$self{ua}->get($request_url);
     if ($response->is_success)
     {
-        return decode_json($response->decoded_content);
+        return from_json($response->decoded_content);
     }
     else
     {
         try
         {
-            return decode_json($response->decoded_content);
+            return from_json($response->decoded_content);
         }
         catch
         {
@@ -101,26 +117,25 @@ sub ticker
     }
 }
 
-sub global
+sub _trace
 {
     my $self = shift;
-    my ($params) = @_;
+    return if !$$self{debug};
 
-    my $query = defined $$params{convert} ? "?convert=$$params{convert}" : '';
-    
-    # debug
-    print STDERR "REQ: https://api.coinmarketcap.com/v$$self{api_version}/global/$query\n" if $$self{debug};
-    
-    my $response = $$self{ua}->get("https://api.coinmarketcap.com/v$$self{api_version}/global/$query");
+    foreach (@_)
+    {
+        if (ref $_)
+        {
+            print STDERR to_json($_);
+        }
+        else
+        {
+            print STDERR $_;
+        }
+        print STDERR ($_ eq $_[-1]) ? "\n" : ' ';
+    }
 
-    if ($response->is_success)
-    {
-        return decode_json($response->decoded_content);
-    }
-    else
-    {
-        die $response->status_line;
-    }
+    return;
 }
 
 1;
@@ -133,25 +148,19 @@ CoinMarketCap's API wrapped for Perl
 
 =head1 SYNOPSIS
 
-  use CoinMarketCap;
+  use CoinMarketCap::API;
 
-  my $market = new CoinMarketCap;
+  my $api = new CoinMarketCap::API;
 
-  my $ticker_data = $market->ticker;
-  my $global_data = $market->global;
+  my $ticker_data = $api->ticker;
+  my $global_data = $api->global;
 
-  # Options are passed in as a hash ref
-  my $ethereum_data = $market->ticker({
-    id => 'ethereum',
-    convert => 'EUR'
-  }); 
-  my $ticker_data_top_10 = $market->ticker({
-    limit => '10'
-  });
+  my $ethereum_data = $api->ticker('etherium', convert => 'EUR'); 
+  my $ticker_data_top_10 = $api->global(limit => '10');
 
 =head1 DESCRIPTION
 
-Stub documentation for CoinMarketCap, created by h2xs. It looks like the
+Stub documentation for CoinMarketCap::API, created by h2xs. It looks like the
 author of the extension was negligent enough to leave the stub
 unedited.
 

@@ -5,4 +5,15 @@ Revision history for Perl extension CoinMarketCap.
 		-AX -n CoinMarketCap
 
 0.01  Sat Jan 13 12:42:01 2018
-    - initial version; CoinMarketCap object constructo; ticker and global methods
+    - initial version
+    - CoinMarketCap object constructor
+    - ticker and global methods
+
+0.0.1 Sat Jun 9 21:09:32 2018
+	- switch to semantic versioning
+	- support for https://coinmarketcap.com's public api v1
+	- added tests
+
+1.0.0a Thu June 14 10:28:00 2018
+	- renamed to CoinMarketCap::API
+	- new method interfaces
